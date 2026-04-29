@@ -139,7 +139,7 @@ configure_gpu_args() {
         return
     fi
 
-    if docker run --rm --gpus all "$image" nvidia-smi >/dev/null 2>&1; then
+    if docker run --rm --gpus all --entrypoint nvidia-smi "$image" >/dev/null 2>&1; then
         GPU_ARGS+=(--gpus all)
         GPU_ARGS+=(-e NVIDIA_VISIBLE_DEVICES=all)
         GPU_ARGS+=(-e NVIDIA_DRIVER_CAPABILITIES=compute,utility)
@@ -147,7 +147,7 @@ configure_gpu_args() {
         return
     fi
 
-    if docker run --rm --runtime=nvidia "$image" nvidia-smi >/dev/null 2>&1; then
+    if docker run --rm --runtime=nvidia --entrypoint nvidia-smi "$image" >/dev/null 2>&1; then
         GPU_ARGS+=(--runtime=nvidia)
         GPU_ARGS+=(-e NVIDIA_VISIBLE_DEVICES=all)
         GPU_ARGS+=(-e NVIDIA_DRIVER_CAPABILITIES=compute,utility)
