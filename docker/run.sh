@@ -182,6 +182,9 @@ if [ "$COMMAND" = "train" ]; then
         "$CONTAINER_MODEL"
         --encoder_path /ace/ace_encoder_pretrained.pt
         --epochs 32
+        --training_buffer_size 12000000
+        --samples_per_image 2048
+        --batch_size 8192
     )
 else
     ACE_ARGS=(
