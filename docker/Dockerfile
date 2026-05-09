@@ -19,14 +19,14 @@ ENV DEBIAN_FRONTEND=noninteractive
 ENV CONDA_PREFIX=""
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        python3.8 \
-        python3.8-dev \
+        python3.9 \
+        python3.9-dev \
         python3-pip \
         build-essential \
         libopencv-dev \
     && rm -rf /var/lib/apt/lists/*
 
-RUN python3.8 -m pip install --no-cache-dir \
+RUN python3.9 -m pip install --no-cache-dir \
         torch==2.0.0+cu118 \
         --index-url https://download.pytorch.org/whl/cu118
 
@@ -35,7 +35,7 @@ WORKDIR /build/dsacstar
 
 RUN sed -i "s|opencv_inc_dir = ''|opencv_inc_dir = '/usr/include/opencv4'|" setup.py && \
     sed -i "s|opencv_lib_dir = ''|opencv_lib_dir = '/usr/lib/x86_64-linux-gnu'|" setup.py && \
-    python3.8 setup.py build_ext --inplace
+        python3.9 setup.py build_ext --inplace
 
 # ---------------------------------------------------------------------------
 # Stage 2: runtime image with ACE + compiled dsacstar
@@ -45,19 +45,23 @@ FROM nvidia/cuda:11.8.0-runtime-ubuntu20.04
 ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        python3.8 \
+        python3.9 \
         python3-pip \
         libopencv-core4.2 \
         libopencv-calib3d4.2 \
         libgomp1 \
+        libglu1-mesa \
+        libglvnd0 \
+        libgl1-mesa-glx \
     && rm -rf /var/lib/apt/lists/*
-
-RUN update-alternatives --install /usr/bin/python python /usr/bin/python3.8 1
+RUN update-alternatives --install /usr/bin/python python /usr/bin/python3.9 1
 
 RUN python -m pip install --no-cache-dir \
         torch==2.0.0+cu118 \
         torchvision==0.15.0+cu118 \
-        --index-url https://download.pytorch.org/whl/cu118
+        --index-url https://download.pytorch.org/whl/cu118 && \
+    python -m pip install --no-cache-dir \
+        PyOpenGL
 
 RUN python -m pip install --no-cache-dir \
         numpy==1.23.5 \
@@ -73,8 +77,9 @@ RUN python -m pip install --no-cache-dir \
 # Compiled C++ RANSAC extension
 COPY --from=builder /build/dsacstar/dsacstar*.so /ace/
 
-# ACE source code
+# ACE source code and pretrained encoder weights
 COPY *.py /ace/
+COPY ace_encoder_pretrained.pt /ace/
 COPY datasets/ /ace/datasets/
 COPY scripts/ /ace/scripts/
 

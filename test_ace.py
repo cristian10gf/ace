@@ -205,12 +205,13 @@ if __name__ == '__main__':
             for frame_idx, (scene_coordinates_3HW, gt_pose_44, intrinsics_33, frame_path) in enumerate(
                     zip(scene_coordinates_B3HW, gt_pose_B44, intrinsics_B33, filenames)):
 
-                # Extract focal length and principal point from the intrinsics matrix.
-                focal_length = intrinsics_33[0, 0].item()
+                # Extract focal lengths and principal point from the intrinsics matrix.
+                fx = intrinsics_33[0, 0].item()
+                fy = intrinsics_33[1, 1].item()
+                # Use the average focal length if fx and fy differ (non-square pixels).
+                focal_length = float((fx + fy) / 2.0)
                 ppX = intrinsics_33[0, 2].item()
                 ppY = intrinsics_33[1, 2].item()
-                # We support a single focal length.
-                assert torch.allclose(intrinsics_33[0, 0], intrinsics_33[1, 1])
 
                 # Remove path from file name
                 frame_name = Path(frame_path).name

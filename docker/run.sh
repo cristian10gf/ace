@@ -181,6 +181,7 @@ if [ "$COMMAND" = "train" ]; then
         "$CONTAINER_SCENE"
         "$CONTAINER_MODEL"
         --encoder_path /ace/ace_encoder_pretrained.pt
+        --epochs 32
     )
 else
     ACE_ARGS=(
