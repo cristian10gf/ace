@@ -84,9 +84,9 @@ if [ -z "$COMMAND" ] || [ -z "$SCENE_PATH" ] || [ -z "$MODEL_PATH" ]; then
 fi
 
 case "$COMMAND" in
-    train|test) ;;
+    train|test|merge|eval) ;;
     *)
-        echo "Error: comando invalido '$COMMAND'. Usa 'train' o 'test'."
+        echo "Error: comando invalido '$COMMAND'. Usa 'train', 'test', 'merge' o 'eval'."
         exit 1
         ;;
 esac
@@ -98,22 +98,25 @@ if [ ! -d "$DATA_ROOT" ]; then
     exit 1
 fi
 
-SCENE_FULL="${DATA_ROOT}/${SCENE_PATH}"
-if [ ! -d "$SCENE_FULL" ]; then
-    echo "Error: la escena '$SCENE_FULL' no existe."
-    exit 1
-fi
+# merge/eval usan paths distintos; validación específica más abajo
+if [ "$COMMAND" = "train" ] || [ "$COMMAND" = "test" ]; then
+    SCENE_FULL="${DATA_ROOT}/${SCENE_PATH}"
+    if [ ! -d "$SCENE_FULL" ]; then
+        echo "Error: la escena '$SCENE_FULL' no existe."
+        exit 1
+    fi
 
-if [ "$COMMAND" = "train" ] && [ ! -d "$SCENE_FULL/train" ]; then
-    echo "Error: no se encontro '$SCENE_FULL/train/'."
-    echo "La escena debe tener subcarpeta train/ con {rgb,poses,calibration}/."
-    exit 1
-fi
+    if [ "$COMMAND" = "train" ] && [ ! -d "$SCENE_FULL/train" ]; then
+        echo "Error: no se encontro '$SCENE_FULL/train/'."
+        echo "La escena debe tener subcarpeta train/ con {rgb,poses,calibration}/."
+        exit 1
+    fi
 
-if [ "$COMMAND" = "test" ] && [ ! -d "$SCENE_FULL/test" ]; then
-    echo "Error: no se encontro '$SCENE_FULL/test/'."
-    echo "La escena debe tener subcarpeta test/ con {rgb,poses,calibration}/."
-    exit 1
+    if [ "$COMMAND" = "test" ] && [ ! -d "$SCENE_FULL/test" ]; then
+        echo "Error: no se encontro '$SCENE_FULL/test/'."
+        echo "La escena debe tener subcarpeta test/ con {rgb,poses,calibration}/."
+        exit 1
+    fi
 fi
 
 # --- Docker image selection ---
@@ -175,6 +178,41 @@ fi
 CONTAINER_SCENE="/data/${SCENE_PATH}"
 CONTAINER_MODEL="/data/${MODEL_PATH}"
 
+run_with_docker_hint() {
+    if ! "$@"; then
+        echo ""
+        echo "La ejecucion en Docker fallo."
+        echo "Si usas Docker Desktop, prueba primero: docker context use default"
+        exit 1
+    fi
+}
+
+# ---- merge: fusionar poses de múltiples heads por mejor inlier count ----
+if [ "$COMMAND" = "merge" ]; then
+    POSES_DIR_HOST="${DATA_ROOT}/${SCENE_PATH}"
+    OUT_FILE_HOST="${DATA_ROOT}/${MODEL_PATH}"
+    mkdir -p "$(dirname "$OUT_FILE_HOST")"
+    echo "Fusionando poses en: ${POSES_DIR_HOST}"
+    run_with_docker_hint docker run "${DOCKER_ARGS[@]}" "$ACE_IMAGE" \
+        merge_ensemble_results.py \
+        "$CONTAINER_SCENE" \
+        "$CONTAINER_MODEL"
+    exit 0
+fi
+
+# ---- eval: evaluar poses fusionadas contra ground truth ----
+if [ "$COMMAND" = "eval" ]; then
+    echo "Evaluando poses fusionadas:"
+    echo "  Escena : ${DATA_ROOT}/${SCENE_PATH}"
+    echo "  Poses  : ${DATA_ROOT}/${MODEL_PATH}"
+    run_with_docker_hint docker run "${DOCKER_ARGS[@]}" "$ACE_IMAGE" \
+        eval_poses.py \
+        "$CONTAINER_SCENE" \
+        "$CONTAINER_MODEL"
+    exit 0
+fi
+
+# ---- train / test ----
 if [ "$COMMAND" = "train" ]; then
     ACE_ARGS=(
         train_ace.py
@@ -204,19 +242,10 @@ MODEL_DIR=$(dirname "${DATA_ROOT}/${MODEL_PATH}")
 mkdir -p "$MODEL_DIR"
 
 echo "Comando      : $COMMAND"
-echo "Escena       : $SCENE_FULL"
+echo "Escena       : ${DATA_ROOT}/${SCENE_PATH}"
 echo "Modelo       : ${DATA_ROOT}/${MODEL_PATH}"
 echo "GPU          : $USE_GPU"
 echo "CPUs         : $NUM_CPUS"
 echo ""
-
-run_with_docker_hint() {
-    if ! "$@"; then
-        echo ""
-        echo "La ejecucion en Docker fallo."
-        echo "Si usas Docker Desktop, prueba primero: docker context use default"
-        exit 1
-    fi
-}
 
 run_with_docker_hint docker run "${DOCKER_ARGS[@]}" "$ACE_IMAGE" "${ACE_ARGS[@]}"
