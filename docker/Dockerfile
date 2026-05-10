@@ -53,6 +53,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         libglu1-mesa \
         libglvnd0 \
         libgl1-mesa-glx \
+        libegl1-mesa \
     && rm -rf /var/lib/apt/lists/*
 RUN update-alternatives --install /usr/bin/python python /usr/bin/python3.9 1
 
