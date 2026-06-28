@@ -1,0 +1,30 @@
+# Build context root: preprocesamiento/models/ace/
+# Excluye todo lo que no es necesario para compilar dsacstar y ejecutar ACE.
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# Docs / meta (no se copian en la imagen)
+LICENSE
+README.md
+environment.yml         # conda, no aplica a Docker
+
+# Python cache
+__pycache__/
+**/__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Editor / OS
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+
+# Logs / tmp
+*.log
+*.tmp
